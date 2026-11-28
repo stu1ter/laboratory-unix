@@ -8,14 +8,12 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 
-#define PORT        8080
-#define BACKLOG     16
-#define BUF_SIZE    1024
+#define PORT 8080
+#define BACKLOG 16
+#define BUF_SIZE 1024
 
 static volatile sig_atomic_t was_sighup = 0;
-static volatile sig_atomic_t terminate  = 0;
 
 static void sighup_handler(int signo)
 {
@@ -41,9 +39,9 @@ static int create_server_socket(int port)
 
     struct sockaddr_in address;
     memset(&address, 0, sizeof(address));
-    address.sin_family      = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_port        = htons((uint16_t)port);
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons((uint16_t)port);
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) == -1) {
         perror("bind");
@@ -86,7 +84,7 @@ int main(void)
 
     int client_fd = -1;
 
-    while (!terminate) {
+    while (1) {
         fd_set read_fds;
         FD_ZERO(&read_fds);
         FD_SET(server_fd, &read_fds);
@@ -106,7 +104,6 @@ int main(void)
                 if (was_sighup) {
                     was_sighup = 0;
                     printf("[signal] SIGHUP received\n");
-                    fflush(stdout);
                 }
                 continue;
             }
@@ -117,7 +114,6 @@ int main(void)
         if (was_sighup) {
             was_sighup = 0;
             printf("[signal] SIGHUP received\n");
-            fflush(stdout);
         }
 
         if (FD_ISSET(server_fd, &read_fds)) {
@@ -127,14 +123,11 @@ int main(void)
                     perror("accept");
             } else if (client_fd == -1) {
                 client_fd = new_fd;
-                printf("[accept] new client connected, fd=%d (kept open)\n",
-                       client_fd);
+                printf("[accept] new client connected, fd=%d (kept open)\n", client_fd);
             } else {
-                printf("[accept] extra client fd=%d closed immediately\n",
-                       new_fd);
+                printf("[accept] extra client fd=%d closed immediately\n", new_fd);
                 close(new_fd);
             }
-            fflush(stdout);
         }
 
         if (client_fd != -1 && FD_ISSET(client_fd, &read_fds)) {
@@ -143,10 +136,8 @@ int main(void)
 
             if (received > 0) {
                 printf("[recv] received %zd bytes\n", received);
-                fflush(stdout);
             } else if (received == 0) {
                 printf("[recv] client closed connection\n");
-                fflush(stdout);
                 close(client_fd);
                 client_fd = -1;
             } else {
